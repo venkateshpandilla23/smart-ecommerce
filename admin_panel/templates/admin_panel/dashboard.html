@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart E-Commerce Admin Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f6f8;
+        }
+
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 30px;
+        }
+
+        .header h1 {
+            margin: 0;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #555;
+        }
+
+        .card p {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 0;
+        }
+
+        .status-summary {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .status-card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-card h3 {
+            margin-top: 0;
+            color: #555;
+        }
+
+        .status-card p {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .revenue-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .revenue-card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .revenue-card h3 {
+            margin-top: 0;
+            color: #555;
+        }
+
+        .revenue-card p {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            background-color: white;
+            padding: 20px;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-container canvas {
+            max-height: 400px;
+        }
+
+        @media (max-width: 900px) {
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .status-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .revenue-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .status-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .revenue-summary {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>Smart E-Commerce Admin Dashboard</h1>
+    </div>
+
+    <div class="container">
+
+        <h2>Dashboard Summary</h2>
+
+        <div class="cards">
+
+            <div class="card">
+                <h3>Total Users</h3>
+                <p>{{ total_users }}</p>
+            </div>
+
+            <div class="card">
+                <h3>Total Orders</h3>
+                <p>{{ total_orders }}</p>
+            </div>
+
+            <div class="card">
+                <h3>Total Sales</h3>
+                <p>₹{{ total_sales }}</p>
+            </div>
+
+            <div class="card">
+                <h3>Low Stock Products</h3>
+                <p>{{ low_stock_products }}</p>
+            </div>
+
+        </div>
+
+        <h2>Order Status Summary</h2>
+
+        <div class="status-summary">
+
+            {% for item in order_status_summary %}
+
+                <div class="status-card">
+                    <h3>{{ item.status|title }}</h3>
+                    <p>{{ item.count }}</p>
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+        <h2>Revenue Trends</h2>
+
+        <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+        </div>
+
+        <h2>Top-Selling Products</h2>
+
+        <div class="revenue-summary">
+
+            {% for item in top_selling_products %}
+
+                <div class="revenue-card">
+                    <h3>Product ID #{{ item.product_id }}</h3>
+                    <p>{{ item.total_quantity }} sold</p>
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+        <h2>Revenue by Order</h2>
+
+        <p>Revenue records: {{ revenue_by_order|length }}</p>
+
+        <div class="revenue-summary">
+
+            {% for item in revenue_by_order %}
+
+                <div class="revenue-card">
+                    <h3>Order #{{ item.order_id }}</h3>
+                    <p>₹{{ item.revenue }}</p>
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <script>
+        const revenueLabels = [
+            {% for item in revenue_by_order %}
+                "Order #{{ item.order_id }}"{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        const revenueData = [
+            {% for item in revenue_by_order %}
+                {{ item.revenue }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        const ctx = document.getElementById("revenueChart");
+
+        new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: revenueLabels,
+                datasets: [{
+                    label: "Revenue (₹)",
+                    data: revenueData,
+                    tension: 0.3,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: "Revenue (₹)"
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Orders"
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
