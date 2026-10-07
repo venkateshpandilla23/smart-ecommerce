@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>SmartShop | Cart</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <style>
+        .cart-container {
+            width: 88%;
+            max-width: 1000px;
+            margin: 40px auto;
+        }
+
+        .cart-item {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .cart-info h3 {
+            margin-bottom: 8px;
+        }
+
+        .cart-info p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        .cart-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quantity-input {
+            width: 70px;
+            padding: 9px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .remove-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 9px 13px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .cart-summary {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .cart-summary h2 {
+            margin-bottom: 15px;
+        }
+
+        .empty-cart {
+            background: white;
+            padding: 40px;
+            text-align: center;
+            border-radius: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .cart-container {
+                width: 92%;
+            }
+
+            .cart-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .cart-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="navbar">
+
+    <div class="logo">SmartShop</div>
+
+    <nav>
+        <a href="/shop/">Products</a>
+        <a href="/shop/cart/">Cart</a>
+        <a href="/shop/orders/">Orders</a>
+        <a href="/shop/login/" id="loginLink">Login</a>
+    </nav>
+
+</header>
+
+
+<main class="cart-container">
+
+    <h1>🛒 My Cart</h1>
+
+    <div id="cartMessage"></div>
+
+    <div id="cartItems">
+        <p>Loading cart...</p>
+    </div>
+
+    <div id="cartSummary" class="cart-summary" style="display:none;">
+
+        <h2>
+            Total: ₹<span id="cartTotal">0.00</span>
+        </h2>
+
+        <button
+            class="btn"
+            onclick="goToCheckout()"
+        >
+            Proceed to Checkout
+        </button>
+
+        <button
+            class="remove-btn"
+            onclick="clearCart()"
+        >
+            Clear Cart
+        </button>
+
+    </div>
+
+</main>
+
+
+<script>
+
+const API_URL = "http://127.0.0.1:8000";
+
+
+function getToken() {
+
+    return localStorage.getItem("access_token");
+
+}
+
+
+function getHeaders() {
+
+    return {
+        "Authorization": `Bearer ${getToken()}`,
+        "Content-Type": "application/json"
+    };
+
+}
+
+
+/* Load cart */
+
+async function loadCart() {
+
+    const token = getToken();
+
+    if (!token) {
+
+        document.getElementById("cartItems").innerHTML = `
+            <div class="empty-cart">
+                <h2>Please login first</h2>
+                <p>You need to login to view your cart.</p>
+
+                <br>
+
+                <a href="/shop/login/" class="btn">
+                    Login
+                </a>
+            </div>
+        `;
+
+        return;
+    }
+
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/cart`,
+            {
+                headers: getHeaders()
+            }
+        );
+
+
+        const data = await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail || "Unable to load cart"
+            );
+
+        }
+
+
+        displayCart(data);
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("cartItems").innerHTML = `
+            <div class="error">
+                Unable to load cart.
+            </div>
+        `;
+
+    }
+
+}
+
+
+/* Display cart */
+
+function displayCart(data) {
+
+    const container =
+        document.getElementById("cartItems");
+
+    let items = [];
+
+
+    if (Array.isArray(data)) {
+
+        items = data;
+
+    } else if (data.items) {
+
+        items = data.items;
+
+    } else if (data.cart) {
+
+        items = data.cart;
+
+    }
+
+
+    if (!items.length) {
+
+        container.innerHTML = `
+            <div class="empty-cart">
+
+                <h2>Your cart is empty 🛒</h2>
+
+                <p>
+                    Add some products to your cart.
+                </p>
+
+                <br>
+
+                <a href="/shop/" class="btn">
+                    Continue Shopping
+                </a>
+
+            </div>
+        `;
+
+        document.getElementById(
+            "cartSummary"
+        ).style.display = "none";
+
+        return;
+
+    }
+
+
+    container.innerHTML = "";
+
+
+    let total = 0;
+
+
+    items.forEach(item => {
+
+        const product =
+            item.product || item;
+
+
+        const productName =
+            product.name ||
+            item.product_name ||
+            "Product";
+
+
+        const price =
+            Number(
+                product.price ||
+                item.price ||
+                0
+            );
+
+
+        const quantity =
+            Number(
+                item.quantity || 1
+            );
+
+
+        const itemTotal =
+            price * quantity;
+
+
+        total += itemTotal;
+
+
+        const cartId =
+            item.id ||
+            item.cart_id;
+
+
+        const productId =
+            product.id ||
+            item.product_id;
+
+
+        const div =
+            document.createElement("div");
+
+
+        div.className =
+            "cart-item";
+
+
+        div.innerHTML = `
+
+            <div class="cart-info">
+
+                <h3>
+                    ${productName}
+                </h3>
+
+                <p>
+                    Price: ₹${price.toFixed(2)}
+                </p>
+
+                <p>
+                    Product ID: ${productId}
+                </p>
+
+            </div>
+
+
+            <div class="cart-actions">
+
+                <input
+                    type="number"
+                    class="quantity-input"
+                    min="1"
+                    value="${quantity}"
+                    onchange="updateCart(${cartId}, this.value)"
+                >
+
+                <strong>
+                    ₹${itemTotal.toFixed(2)}
+                </strong>
+
+                <button
+                    class="remove-btn"
+                    onclick="removeFromCart(${cartId})"
+                >
+                    Remove
+                </button>
+
+            </div>
+
+        `;
+
+
+        container.appendChild(div);
+
+    });
+
+
+    document.getElementById(
+        "cartTotal"
+    ).textContent =
+        total.toFixed(2);
+
+
+    document.getElementById(
+        "cartSummary"
+    ).style.display = "block";
+
+}
+
+
+/* Update quantity */
+
+async function updateCart(cartId, quantity) {
+
+    quantity = Number(quantity);
+
+
+    if (quantity < 1) {
+
+        alert("Quantity must be at least 1.");
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/cart/${cartId}`,
+                {
+                    method: "PUT",
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        quantity: quantity
+                    })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                data.detail ||
+                "Unable to update cart."
+            );
+
+            return;
+
+        }
+
+
+        loadCart();
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Unable to connect to FastAPI."
+        );
+
+    }
+
+}
+
+
+/* Remove item */
+
+async function removeFromCart(cartId) {
+
+    if (!confirm("Remove this product from cart?")) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/cart/${cartId}`,
+                {
+                    method: "DELETE",
+                    headers: getHeaders()
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                data.detail ||
+                "Unable to remove item."
+            );
+
+            return;
+
+        }
+
+
+        loadCart();
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Unable to connect to FastAPI."
+        );
+
+    }
+
+}
+
+
+/* Clear cart */
+
+async function clearCart() {
+
+    if (!confirm("Clear your entire cart?")) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `${API_URL}/cart/clear`,
+                {
+                    method: "DELETE",
+                    headers: getHeaders()
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        alert(
+            data.message ||
+            "Cart cleared."
+        );
+
+
+        loadCart();
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Unable to connect to FastAPI."
+        );
+
+    }
+
+}
+
+
+/* Checkout */
+
+function goToCheckout() {
+
+    window.location.href =
+        "/shop/checkout/";
+
+}
+
+
+/* Start */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    loadCart
+);
+
+</script>
+
+</body>
+</html>

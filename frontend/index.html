@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart E-Commerce | Products</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+
+<body>
+
+<header class="navbar">
+    <div class="logo">SmartShop</div>
+
+    <nav>
+        <a href="/shop/">Products</a>
+        <a href="/shop/cart/">Cart</a>
+        <a href="/shop/orders/">Orders</a>
+        <a href="/shop/notifications/">Notifications</a>
+        <a href="/shop/profile/">Profile</a>
+        <a href="/shop/register/">Register</a>
+        <a href="/shop/login/" id="loginLink">Login</a>
+    </nav>
+</header>
+
+<section class="hero">
+    <div>
+        <h1>Smart Shopping Made Easy</h1>
+        <p>Browse products, add to cart and place your order.</p>
+        <a href="#products" class="btn">Shop Now</a>
+    </div>
+</section>
+
+<section class="filters">
+
+    <input
+        type="text"
+        id="searchInput"
+        placeholder="Search products..."
+    >
+
+    <select id="categoryFilter">
+        <option value="">All Categories</option>
+    </select>
+
+    <input
+        type="number"
+        id="minPrice"
+        placeholder="Min Price"
+    >
+
+    <input
+        type="number"
+        id="maxPrice"
+        placeholder="Max Price"
+    >
+
+    <select id="sortFilter">
+        <option value="">Sort By</option>
+        <option value="price_low">Price: Low to High</option>
+        <option value="price_high">Price: High to Low</option>
+        <option value="popularity">Popularity</option>
+    </select>
+
+    <button class="btn" onclick="loadProducts()">Filter</button>
+
+</section>
+
+<main id="products" class="container">
+
+    <h2>Products</h2>
+
+    <div id="productMessage"></div>
+
+    <div id="productGrid" class="product-grid">
+        <p>Loading products...</p>
+    </div>
+
+</main>
+
+<footer>
+    <p>© 2026 SmartShop | Smart E-Commerce Platform</p>
+</footer>
+
+<script src="{% static 'js/app.js' %}"></script>
+
+</body>
+</html>

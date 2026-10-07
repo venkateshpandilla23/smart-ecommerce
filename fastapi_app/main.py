@@ -11,7 +11,7 @@ from fastapi.security import (
     HTTPAuthorizationCredentials
 )
 from sqlalchemy import or_
-
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import database
 import models
@@ -160,6 +160,16 @@ def verify_admin(
 
 # FASTAPI APP
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:8001",
+        "http://localhost:8001",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ConnectionManager:
     def __init__(self):
@@ -222,24 +232,29 @@ def register(
     ).filter(
         models.User.email == user.email
     ).first()
+
     if existing_user:
         raise HTTPException(
             status_code=400,
             detail="Email already registered"
         )
+
     hashed_password = bcrypt.hashpw(
         user.password.encode("utf-8"),
         bcrypt.gensalt()
     ).decode("utf-8")
+
     new_user = models.User(
         name=user.name,
         email=user.email,
         password=hashed_password,
         role="customer"
     )
+
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
     return {
         "message": "User registered successfully",
         "user_id": new_user.id
@@ -247,7 +262,7 @@ def register(
 # LOGIN
 @app.post("/login")
 def login(
-    user: schemas.UserCreate,
+    user: schemas.LoginRequest,
     db: Session = Depends(get_db)
 ):
     existing_user = db.query(
@@ -2474,8 +2489,9 @@ def get_products(
 
 
 
-                "category": product.category
+                "category": product.category,
 
+                "image": product.image
 
 
 
@@ -5364,486 +5380,77 @@ def place_order(
 
 # ============================================================
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @app.get("/orders")
-
-
-
-
-
-
-
 def get_my_orders(
-
-
-
-
-
-
-
     db: Session = Depends(get_db),
-
-
-
-
-
-
-
     token_data: dict = Depends(verify_token)
-
-
-
-
-
-
-
 ):
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     user_id = token_data.get("user_id")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     if not user_id:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         raise HTTPException(
-
-
-
-
-
-
-
             status_code=401,
-
-
-
-
-
-
-
             detail="Invalid user token"
-
-
-
-
-
-
-
         )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     orders = db.query(
-
-
-
-
-
-
-
         models.Order
-
-
-
-
-
-
-
     ).filter(
-
-
-
-
-
-
-
         models.Order.user_id == user_id
-
-
-
-
-
-
-
     ).all()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     if not orders:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         return {
-
-
-
-
-
-
-
             "message": "No orders found",
-
-
-
-
-
-
-
             "orders": []
-
-
-
-
-
-
-
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     result = []
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     for order in orders:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         order_items = db.query(
-
-
-
-
-
-
-
             models.OrderItem
-
-
-
-
-
-
-
         ).filter(
-
-
-
-
-
-
-
             models.OrderItem.order_id == order.id
-
-
-
-
-
-
-
         ).all()
 
+        # Get payment information for this order
+        payment = db.query(
+            models.Payment
+        ).filter(
+            models.Payment.order_id == order.id
+        ).order_by(
+            models.Payment.id.desc()
+        ).first()
 
-
-
-
-
-
-
-
-
-
-
-
-
+        payment_status = (
+            payment.payment_status
+            if payment
+            else "pending"
+        )
 
         result.append({
-
-
-
-
-
-
-
             "order_id": order.id,
-
-
-
-
-
-
-
             "user_id": order.user_id,
-
-
-
-
-
-
-
             "total_amount": order.total_amount,
-
-
-
-
-
-
-
             "status": order.status,
-
-
-
-
-
-
-
+            "payment_status": payment_status,
             "items": [
-
-
-
-
-
-
-
                 {
-
-
-
-
-
-
-
                     "order_item_id": item.id,
-
-
-
-
-
-
-
                     "product_id": item.product_id,
-
-
-
-
-
-
-
                     "quantity": item.quantity,
-
-
-
-
-
-
-
                     "price": item.price
-
-
-
-
-
-
-
                 }
-
-
-
-
-
-
-
                 for item in order_items
-
-
-
-
-
-
-
             ]
-
-
-
-
-
-
-
         })
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     return {
-
-
-
-
-
-
-
         "total_orders": len(orders),
-
-
-
-
-
-
-
         "orders": result
-
-
-
-
-
-
-
     }
-
-
-
-
-
-
-
-
-
 
 
 

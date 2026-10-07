@@ -2,11 +2,16 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import datetime
 
 
+
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
 
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 class UserProfile(BaseModel):
     model_config = ConfigDict(from_attributes=True)

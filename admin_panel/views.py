@@ -118,3 +118,27 @@ def export_orders_pdf(request):
     pdf.save()
 
     return response
+
+def shop_home(request):
+    return render(request, "index.html")
+
+def login_page(request):
+    return render(request, "login.html")
+
+def cart_page(request):
+    return render(request, "cart.html")
+
+def checkout_page(request):
+    return render(request, "checkout.html")
+
+def orders_page(request):
+    return render(request, "orders.html")
+
+def notifications_page(request):
+    return render(request, "notifications.html")
+
+def profile_page(request):
+    return render(request, "profile.html")
+
+def register_page(request):
+    return render(request, "register.html")

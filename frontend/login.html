@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>SmartShop | Login</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    <style>
+        .auth-page {
+            min-height: 80vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            background: white;
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        }
+
+        .auth-card h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .auth-card p {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 13px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 8px;
+            background: #111827;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .login-btn:hover {
+            background: #2563eb;
+        }
+
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 7px;
+            display: none;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="navbar">
+    <div class="logo">SmartShop</div>
+
+    <nav>
+        <a href="/shop/">Products</a>
+        <a href="/shop/login/">Login</a>
+    </nav>
+</header>
+
+<main class="auth-page">
+
+    <div class="auth-card">
+
+        <h1>Welcome Back 👋</h1>
+
+        <p>Login to continue shopping</p>
+
+        <form id="loginForm">
+
+            <div class="form-group">
+                <label for="email">Email</label>
+
+                <input
+                    type="email"
+                    id="email"
+                    placeholder="Enter your email"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Enter your password"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="login-btn">
+                Login
+            </button>
+
+        </form>
+
+        <div id="message" class="message"></div>
+
+        <a href="/shop/" class="back-link">
+            ← Back to Products
+        </a>
+
+    </div>
+
+</main>
+
+<script>
+
+const API_URL = "http://127.0.0.1:8000";
+
+const loginForm = document.getElementById("loginForm");
+const message = document.getElementById("message");
+
+function showMessage(text, type) {
+
+    message.textContent = text;
+
+    message.className = "message " + type;
+
+    message.style.display = "block";
+}
+
+loginForm.addEventListener("submit", async function(event) {
+
+    event.preventDefault();
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    showMessage("Logging in...", "success");
+
+    try {
+
+        /*
+         * First try JSON login.
+         */
+        let response = await fetch(`${API_URL}/login`, {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
+
+        });
+
+        /*
+         * If the API expects OAuth2 form data,
+         * try username/password format.
+         */
+        if (!response.ok && response.status === 422) {
+
+            const formData = new URLSearchParams();
+
+            formData.append("username", email);
+            formData.append("password", password);
+
+            response = await fetch(`${API_URL}/login`, {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+
+                body: formData
+
+            });
+
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            let errorMessage = "Login failed.";
+
+            if (data.detail) {
+
+                if (typeof data.detail === "string") {
+                    errorMessage = data.detail;
+                } else {
+                    errorMessage = "Invalid email or password.";
+                }
+
+            }
+
+            showMessage(errorMessage, "error");
+
+            return;
+        }
+
+        if (!data.access_token) {
+
+            showMessage(
+                "Login successful, but access token was not returned.",
+                "error"
+            );
+
+            return;
+        }
+
+        localStorage.setItem(
+            "access_token",
+            data.access_token
+        );
+
+        showMessage(
+            "Login successful! Redirecting...",
+            "success"
+        );
+
+        setTimeout(function() {
+
+            window.location.href = "/shop/";
+
+        }, 800);
+
+    } catch (error) {
+
+        console.error(error);
+
+        showMessage(
+            "Unable to connect to the FastAPI server. Please make sure FastAPI is running on port 8000.",
+            "error"
+        );
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>

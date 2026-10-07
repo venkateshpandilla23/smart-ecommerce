@@ -22,6 +22,7 @@ class Product(Base):
     price = Column(Float, nullable=False)
     stock = Column(Integer, nullable=False, default=0)
     category = Column(String(100), nullable=False)
+    image = Column(String(255), nullable=True)
 
 
 class Cart(Base):
